@@ -37,16 +37,30 @@
 - **鉴权**: JWT (jose)
 - **状态**: Zustand
 
+## 环境要求
+
+| 工具 | 版本 |
+|------|------|
+| Node.js | >= 20.x |
+| npm | >= 9.x |
+| 操作系统 | Windows / macOS / Linux |
+
+无需安装数据库，SQLite 内嵌在项目中。
+
 ## 快速开始
 
 ```bash
+# 克隆仓库
+git clone https://github.com/Kunlun-Donkey/family-ledger.git
+cd family-ledger
+
 # 安装依赖
 npm install
 
-# 初始化数据库
+# 初始化数据库（创建表）
 npx tsx src/lib/db/migrate.ts
 
-# 填充测试数据
+# 填充测试数据（可选）
 npx tsx scripts/seed.ts
 
 # 启动开发服务器
@@ -54,6 +68,10 @@ npm run dev
 ```
 
 访问 http://localhost:3000
+
+### 局域网访问（手机）
+
+启动后终端会显示 Network 地址（如 `http://192.168.x.x:3000`），手机连接同一 WiFi 后直接访问该地址。
 
 ### 测试账号
 
@@ -64,19 +82,45 @@ npm run dev
 
 家庭邀请码: `ABC123`
 
+## 环境变量
+
+创建 `.env` 文件（已包含默认值）：
+
+```env
+DATABASE_URL="file:./data.db"
+JWT_SECRET="your-secret-key-change-in-production"
+```
+
+生产环境务必修改 `JWT_SECRET` 为随机长字符串。
+
 ## 部署
 
-### PM2
+### 方式一：PM2（推荐）
 
 ```bash
 npm run build
 pm2 start npm --name "family-ledger" -- start
+pm2 save && pm2 startup
 ```
 
-### Docker
+### 方式二：Docker
 
 ```bash
 docker compose up -d --build
+```
+
+### Nginx 反向代理（可选）
+
+```nginx
+server {
+    listen 80;
+    server_name finance.yourdomain.com;
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
 ```
 
 ## 项目文档
