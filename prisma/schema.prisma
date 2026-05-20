@@ -1,0 +1,157 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  nickname     String
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  familyMembers FamilyMember[]
+  incomes       Income[]
+  expenses      Expense[]
+  assets        Asset[]
+
+  @@map("users")
+}
+
+model Family {
+  id        String   @id @default(cuid())
+  name      String
+  createdBy String   @map("created_by")
+  inviteCode String  @unique @map("invite_code")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  members  FamilyMember[]
+  incomes  Income[]
+  expenses Expense[]
+  assets   Asset[]
+  loans    Loan[]
+
+  @@map("families")
+}
+
+model FamilyMember {
+  id       String @id @default(cuid())
+  familyId String @map("family_id")
+  userId   String @map("user_id")
+  role     String @default("member") // owner | member
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([familyId, userId])
+  @@map("family_members")
+}
+
+model Income {
+  id        String   @id @default(cuid())
+  familyId  String   @map("family_id")
+  userId    String   @map("user_id")
+  type      String   // salary | bonus | side_income | other
+  amount    Float
+  date      String   // YYYY-MM-DD
+  remark    String   @default("")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("incomes")
+}
+
+model Expense {
+  id           String   @id @default(cuid())
+  familyId     String   @map("family_id")
+  userId       String   @map("user_id")
+  category     String   // mortgage | food | utilities | childcare | medical | transport | entertainment | shopping | insurance | other
+  amount       Float
+  date         String   // YYYY-MM-DD
+  payMethod    String   @default("alipay") @map("pay_method") // cash | card | alipay | wechat
+  isFixed      Boolean  @default(false) @map("is_fixed")
+  remark       String   @default("")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("expenses")
+}
+
+model Asset {
+  id        String   @id @default(cuid())
+  familyId  String   @map("family_id")
+  userId    String   @map("user_id")
+  type      String   // cash_bank | cash_wechat | cash_alipay | cash_hand | invest_stock | invest_fund | fixed_house | fixed_car
+  name      String
+  value     Float
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  family Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("assets")
+}
+
+model Loan {
+  id               String   @id @default(cuid())
+  familyId         String   @map("family_id")
+  loanType         String   @map("loan_type") // provident_fund | commercial | mixed
+  name             String
+  providentAmount  Float    @default(0) @map("provident_amount")
+  commercialAmount Float    @default(0) @map("commercial_amount")
+  providentRate    Float    @default(0) @map("provident_rate") // annual rate %
+  commercialRate   Float    @default(0) @map("commercial_rate") // annual rate %
+  years            Int
+  startDate        String   @map("start_date") // YYYY-MM-DD
+  repaymentType    String   @map("repayment_type") // equal_payment | equal_principal
+  remainPrincipal  Float    @map("remain_principal")
+  isSettled        Boolean  @default(false) @map("is_settled")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  family    Family         @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  schedules LoanSchedule[]
+  events    LoanEvent[]
+
+  @@map("loans")
+}
+
+model LoanSchedule {
+  id              String @id @default(cuid())
+  loanId          String @map("loan_id")
+  period          Int    // 期数
+  date            String // YYYY-MM-DD
+  payment         Float  // 月供
+  principal       Float  // 本金
+  interest        Float  // 利息
+  remainPrincipal Float  @map("remain_principal")
+  status          String @default("unpaid") // paid | unpaid
+  loanPart        String @default("total") @map("loan_part") // provident | commercial | total
+
+  loan Loan @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  @@map("loan_schedules")
+}
+
+model LoanEvent {
+  id        String   @id @default(cuid())
+  loanId    String   @map("loan_id")
+  type      String   // prepayment | rate_change | manual_adjust
+  date      String   // YYYY-MM-DD
+  amount    Float    @default(0) // for prepayment
+  newRate   Float    @default(0) @map("new_rate") // for rate_change
+  remark    String   @default("")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  loan Loan @relation(fields: [loanId], references: [id], onDelete: Cascade)
+
+  @@map("loan_events")
+}
